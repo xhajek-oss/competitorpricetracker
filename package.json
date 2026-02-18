@@ -1,0 +1,31 @@
+{
+  "name": "competitor-price-tracker",
+  "version": "1.0.0",
+  "description": "Track competitor prices and get notified when they change",
+  "main": "dist/server/index.js",
+  "scripts": {
+    "dev": "tsx watch server/index.ts",
+    "build": "tsc",
+    "start": "node dist/server/index.js",
+    "scrape:test": "tsx server/scraper/test.ts"
+  },
+  "keywords": ["price-tracker", "ecommerce", "scraper", "competitor-analysis"],
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "node-cron": "^3.0.3",
+    "playwright": "^1.49.0",
+    "resend": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
