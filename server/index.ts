@@ -73,6 +73,25 @@ function apiKeyAuth(req: express.Request, res: express.Response, next: express.N
   res.status(401).json({ success: false, error: 'Unauthorized. Provide a valid X-API-Key header.' });
 }
 
+// --- Health check (public, no auth) ---
+const startedAt = new Date().toISOString();
+
+app.get('/api/health', (_req, res) => {
+  try {
+    const db = getDb();
+    const row = db.prepare('SELECT COUNT(*) as count FROM products').get() as { count: number };
+    res.json({
+      status: 'ok',
+      uptime: process.uptime(),
+      started_at: startedAt,
+      products: row.count,
+      node: process.version,
+    });
+  } catch {
+    res.status(503).json({ status: 'error', message: 'Database unavailable' });
+  }
+});
+
 // --- Auth check endpoint (for frontend) ---
 app.get('/api/auth/check', (req, res) => {
   if (!CONFIG.API_KEY) {
@@ -102,10 +121,10 @@ export { app };
 
 // Only start server when not running under Vitest
 if (!process.env.VITEST) {
-  getDb();
+  const db = getDb();
   startScheduler();
 
-  app.listen(CONFIG.PORT, () => {
+  const server = app.listen(CONFIG.PORT, () => {
     console.log(`Price Tracker running at http://localhost:${CONFIG.PORT}`);
     if (CONFIG.API_KEY) {
       console.log('API key authentication: ENABLED');
@@ -113,4 +132,27 @@ if (!process.env.VITEST) {
       console.log('API key authentication: DISABLED (set API_KEY in .env for production)');
     }
   });
+
+  // --- Graceful Shutdown ---
+  function shutdown(signal: string) {
+    console.log(`\n${signal} received — shutting down gracefully...`);
+
+    server.close(() => {
+      console.log('HTTP server closed');
+      try {
+        db.close();
+        console.log('Database connection closed');
+      } catch { /* already closed */ }
+      process.exit(0);
+    });
+
+    // Force exit after 10 seconds if connections hang
+    setTimeout(() => {
+      console.error('Forced shutdown after timeout');
+      process.exit(1);
+    }, 10_000).unref();
+  }
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }

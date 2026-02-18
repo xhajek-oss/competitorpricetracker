@@ -160,3 +160,26 @@ describe('Products API routes', () => {
     });
   });
 });
+
+describe('GET /api/health', () => {
+  it('returns health status with uptime and product count', async () => {
+    const res = await request(app).get('/api/health');
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('ok');
+    expect(res.body.uptime).toBeTypeOf('number');
+    expect(res.body.products).toBe(0);
+    expect(res.body.node).toBeTypeOf('string');
+    expect(res.body.started_at).toBeTypeOf('string');
+  });
+
+  it('reflects correct product count', async () => {
+    createProduct({ url: 'https://example.com/health1', shop_type: 'generic' });
+    createProduct({ url: 'https://example.com/health2', shop_type: 'generic' });
+
+    const res = await request(app).get('/api/health');
+
+    expect(res.status).toBe(200);
+    expect(res.body.products).toBe(2);
+  });
+});
