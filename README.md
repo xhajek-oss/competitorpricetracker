@@ -2,9 +2,9 @@
 
 Self-hosted price monitoring tool for e-commerce. Track competitor prices across Amazon, eBay, Shopify, and any online shop. Get notified instantly when prices change via Email, Telegram, or Webhook.
 
+![CI](https://github.com/kevinjaegle/CompetitorPriceTracker/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/github/license/kevinjaegle/CompetitorPriceTracker)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
-![Tests](https://img.shields.io/badge/tests-144%20passed-brightgreen)
 ![Docker](https://img.shields.io/badge/docker-ready-blue)
 
 ## Features
