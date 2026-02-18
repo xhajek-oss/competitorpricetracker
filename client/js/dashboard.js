@@ -209,10 +209,17 @@ async function showProductDetail(id) {
       '\')">Delete Product</button>' +
       '</div>';
 
-    // Chart section
+    // Chart section with CSV export
     html +=
       '<div class="detail-section">' +
-      '  <h3>Price History</h3>' +
+      '  <div class="detail-section-header">' +
+      '    <h3>Price History</h3>' +
+      '    <button class="btn btn-ghost btn-sm" onclick="exportPricesCsv(' +
+      product.id +
+      ', \'' +
+      escapeHtml(name).replace(/'/g, "\\'") +
+      '\')">Export CSV</button>' +
+      '  </div>' +
       '  <div class="chart-container">' +
       '    <canvas id="price-chart"></canvas>' +
       '  </div>' +

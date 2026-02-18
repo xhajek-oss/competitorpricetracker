@@ -306,5 +306,220 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+/**
+ * Export price history as CSV
+ */
+async function exportPricesCsv(productId, productName) {
+  try {
+    var prices = await getProductPrices(productId, { limit: 1000 });
+    if (!prices || prices.length === 0) {
+      showToast('No price data to export', 'info');
+      return;
+    }
+
+    var csv = 'Date,Price,Currency\n';
+    for (var i = 0; i < prices.length; i++) {
+      var p = prices[i];
+      var date = p.checked_at.replace(' ', 'T');
+      if (!date.endsWith('Z') && !date.includes('+')) date += 'Z';
+      csv += new Date(date).toISOString() + ',' + p.price.toFixed(2) + ',' + (p.currency || 'EUR') + '\n';
+    }
+
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    var safeName = (productName || 'product').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 40);
+    link.download = 'prices_' + safeName + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('CSV exported (' + prices.length + ' records)', 'success');
+  } catch (err) {
+    showToast('Export failed: ' + err.message, 'error');
+  }
+}
+
+/**
+ * Comparison chart — multi-product overlay
+ */
+var compareChart = null;
+var compareSelectedIds = [];
+var compareProducts = [];
+
+var COMPARE_COLORS = [
+  '#2563eb', '#dc2626', '#16a34a', '#f59e0b',
+  '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16',
+];
+
+async function showCompareView() {
+  switchView('view-compare');
+
+  var container = document.getElementById('compare-container');
+  container.innerHTML =
+    '<div class="loading-overlay"><span class="spinner spinner-dark"></span> Loading products...</div>';
+
+  try {
+    compareProducts = await getProducts();
+    compareSelectedIds = [];
+
+    if (!compareProducts || compareProducts.length < 2) {
+      container.innerHTML =
+        '<p class="text-muted" style="padding:24px; text-align:center;">You need at least 2 products to compare prices.</p>';
+      return;
+    }
+
+    renderCompareUI();
+  } catch (err) {
+    container.innerHTML =
+      '<div class="loading-overlay text-danger">Failed to load products: ' +
+      escapeHtml(err.message) +
+      '</div>';
+  }
+}
+
+function renderCompareUI() {
+  var container = document.getElementById('compare-container');
+
+  var html = '<div class="compare-select-area">';
+  for (var i = 0; i < compareProducts.length; i++) {
+    var p = compareProducts[i];
+    var name = p.name || 'Unnamed';
+    if (name.length > 30) name = name.substring(0, 27) + '...';
+    var color = COMPARE_COLORS[i % COMPARE_COLORS.length];
+    var selected = compareSelectedIds.indexOf(p.id) !== -1;
+    html +=
+      '<div class="compare-chip' +
+      (selected ? ' selected' : '') +
+      '" onclick="toggleCompareProduct(' +
+      p.id +
+      ')" data-compare-id="' +
+      p.id +
+      '">' +
+      '<span class="chip-dot" style="background:' +
+      color +
+      '"></span>' +
+      escapeHtml(name) +
+      '</div>';
+  }
+  html += '</div>';
+
+  html +=
+    '<div class="compare-chart-container">' +
+    '  <canvas id="compare-chart"></canvas>' +
+    '  <div id="compare-empty" class="compare-empty">Select 2 or more products to compare</div>' +
+    '</div>';
+
+  container.innerHTML = html;
+}
+
+function toggleCompareProduct(productId) {
+  var idx = compareSelectedIds.indexOf(productId);
+  if (idx === -1) {
+    compareSelectedIds.push(productId);
+  } else {
+    compareSelectedIds.splice(idx, 1);
+  }
+
+  // Update chip styling
+  var chips = document.querySelectorAll('.compare-chip');
+  chips.forEach(function (chip) {
+    var id = parseInt(chip.getAttribute('data-compare-id'), 10);
+    if (compareSelectedIds.indexOf(id) !== -1) {
+      chip.classList.add('selected');
+    } else {
+      chip.classList.remove('selected');
+    }
+  });
+
+  updateCompareChart();
+}
+
+async function updateCompareChart() {
+  var emptyEl = document.getElementById('compare-empty');
+  var canvas = document.getElementById('compare-chart');
+
+  if (compareSelectedIds.length < 2) {
+    if (compareChart) { compareChart.destroy(); compareChart = null; }
+    if (emptyEl) emptyEl.style.display = 'flex';
+    if (canvas) canvas.style.display = 'none';
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (canvas) canvas.style.display = 'block';
+
+  var datasets = [];
+  for (var i = 0; i < compareSelectedIds.length; i++) {
+    var pid = compareSelectedIds[i];
+    var product = compareProducts.find(function (p) { return p.id === pid; });
+    if (!product) continue;
+
+    try {
+      var prices = await getProductPrices(pid, { limit: 100 });
+      if (!prices || prices.length === 0) continue;
+
+      var productIdx = compareProducts.indexOf(product);
+      var color = COMPARE_COLORS[productIdx % COMPARE_COLORS.length];
+      var name = product.name || 'Product #' + pid;
+      if (name.length > 25) name = name.substring(0, 22) + '...';
+
+      datasets.push({
+        label: name,
+        data: prices.map(function (p) {
+          var raw = p.checked_at.replace(' ', 'T');
+          if (!raw.endsWith('Z') && !raw.includes('+')) raw += 'Z';
+          return { x: new Date(raw), y: p.price };
+        }),
+        borderColor: color,
+        backgroundColor: color + '1A',
+        fill: false,
+        tension: 0.3,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        borderWidth: 2,
+      });
+    } catch {
+      // Skip products that fail to load prices
+    }
+  }
+
+  if (compareChart) { compareChart.destroy(); }
+
+  compareChart = new Chart(canvas, {
+    type: 'line',
+    data: { datasets: datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              return ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(2);
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          type: 'time',
+          time: { unit: 'day', tooltipFormat: 'dd.MM.yyyy HH:mm' },
+          ticks: { maxTicksLimit: 10 },
+        },
+        y: {
+          beginAtZero: false,
+          ticks: {
+            callback: function (value) { return value.toFixed(2); },
+          },
+        },
+      },
+    },
+  });
+}
+
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', init);

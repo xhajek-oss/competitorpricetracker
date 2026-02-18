@@ -5,6 +5,7 @@ import { scrapeAmazon } from './amazon';
 import { scrapeEbay } from './ebay';
 import { scrapeShopify } from './shopify';
 import { scrapeGeneric } from './generic';
+import { logger } from '../logger';
 
 // --- Concurrency limiter ---
 let activeScrapes = 0;
@@ -25,6 +26,52 @@ function releaseScrapeSlot(): void {
   activeScrapes--;
   const next = waitQueue.shift();
   if (next) next();
+}
+
+// --- Retry with exponential backoff ---
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 2000;
+
+async function scrapePriceWithRetry(url: string, shopType: ShopType): Promise<ScrapeResult> {
+  let lastResult: ScrapeResult | null = null;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      let result: ScrapeResult;
+      switch (shopType) {
+        case 'amazon': result = await scrapeAmazon(url); break;
+        case 'ebay': result = await scrapeEbay(url); break;
+        case 'shopify': result = await scrapeShopify(url); break;
+        default: result = await scrapeGeneric(url); break;
+      }
+
+      if (result.success) return result;
+
+      lastResult = result;
+      if (attempt < MAX_RETRIES) {
+        const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        logger.warn({ url, attempt, maxRetries: MAX_RETRIES, delay }, `Scrape failed, retrying in ${delay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    } catch (error) {
+      lastResult = {
+        success: false,
+        price: null,
+        currency: 'EUR',
+        productName: null,
+        error: error instanceof Error ? error.message : 'Unknown scraping error',
+        shopType,
+      };
+      if (attempt < MAX_RETRIES) {
+        const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        logger.warn({ url, attempt, err: error }, `Scrape threw error, retrying in ${delay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  logger.error({ url, shopType }, `All ${MAX_RETRIES} scrape attempts failed`);
+  return lastResult!;
 }
 
 // --- SSRF Protection ---
@@ -103,21 +150,7 @@ export async function scrapePrice(url: string): Promise<ScrapeResult> {
   await acquireScrapeSlot();
 
   try {
-    switch (shopType) {
-      case 'amazon': return await scrapeAmazon(url);
-      case 'ebay': return await scrapeEbay(url);
-      case 'shopify': return await scrapeShopify(url);
-      default: return await scrapeGeneric(url);
-    }
-  } catch (error) {
-    return {
-      success: false,
-      price: null,
-      currency: 'EUR',
-      productName: null,
-      error: error instanceof Error ? error.message : 'Unknown scraping error',
-      shopType,
-    };
+    return await scrapePriceWithRetry(url, shopType);
   } finally {
     releaseScrapeSlot();
   }

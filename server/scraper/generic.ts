@@ -14,10 +14,11 @@ async function getBrowser(): Promise<Browser> {
 
 export async function scrapeGeneric(url: string): Promise<ScrapeResult> {
   const b = await getBrowser();
-  const page = await b.newPage({
+  const context = await b.newContext({
     userAgent:
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   });
+  const page = await context.newPage();
 
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: CONFIG.SCRAPER_TIMEOUT_MS });
@@ -207,6 +208,6 @@ export async function scrapeGeneric(url: string): Promise<ScrapeResult> {
 
     return { success: true, price, currency, productName, shopType: 'generic' };
   } finally {
-    await page.close();
+    await context.close();
   }
 }

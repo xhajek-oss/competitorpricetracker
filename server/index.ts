@@ -6,6 +6,7 @@ import path from 'path';
 import { CONFIG } from '../shared/config';
 import { getDb } from './database/connection';
 import { startScheduler } from './scheduler/priceChecker';
+import { startBackupScheduler, createBackup } from './backup';
 import { logger } from './logger';
 
 // Import routes
@@ -124,6 +125,10 @@ export { app };
 if (!process.env.VITEST) {
   const db = getDb();
   startScheduler();
+  startBackupScheduler();
+
+  // Create initial backup on startup
+  createBackup();
 
   const server = app.listen(CONFIG.PORT, () => {
     logger.info({ port: CONFIG.PORT }, `Price Tracker running at http://localhost:${CONFIG.PORT}`);

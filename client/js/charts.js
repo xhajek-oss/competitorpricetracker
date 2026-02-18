@@ -87,3 +87,10 @@ function destroyPriceChart() {
     priceChart = null;
   }
 }
+
+function destroyCompareChart() {
+  if (typeof compareChart !== 'undefined' && compareChart) {
+    compareChart.destroy();
+    compareChart = null;
+  }
+}
