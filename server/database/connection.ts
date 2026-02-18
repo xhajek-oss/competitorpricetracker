@@ -24,3 +24,13 @@ export function getDb(): Database.Database {
   dbInstance = db;
   return db;
 }
+
+/** Inject an in-memory DB for testing. */
+export function setTestDb(db: Database.Database): void {
+  dbInstance = db;
+}
+
+/** Clear the current DB instance (for test teardown). */
+export function resetDb(): void {
+  dbInstance = null;
+}

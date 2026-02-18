@@ -98,18 +98,19 @@ app.use('/api/notifications', apiLimiter, apiKeyAuth, notificationsRouter);
 // Apply stricter rate limit to scrape-triggering endpoints
 app.use('/api/products/:id/check', scrapeLimiter);
 
-// Initialize database
-getDb();
+export { app };
 
-// Start scheduler
-startScheduler();
+// Only start server when not running under Vitest
+if (!process.env.VITEST) {
+  getDb();
+  startScheduler();
 
-// Start server
-app.listen(CONFIG.PORT, () => {
-  console.log(`Price Tracker running at http://localhost:${CONFIG.PORT}`);
-  if (CONFIG.API_KEY) {
-    console.log('API key authentication: ENABLED');
-  } else {
-    console.log('API key authentication: DISABLED (set API_KEY in .env for production)');
-  }
-});
+  app.listen(CONFIG.PORT, () => {
+    console.log(`Price Tracker running at http://localhost:${CONFIG.PORT}`);
+    if (CONFIG.API_KEY) {
+      console.log('API key authentication: ENABLED');
+    } else {
+      console.log('API key authentication: DISABLED (set API_KEY in .env for production)');
+    }
+  });
+}
