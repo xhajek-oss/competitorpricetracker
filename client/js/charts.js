@@ -13,7 +13,10 @@ function createPriceChart(canvasId, priceData, currency) {
   }
 
   var labels = priceData.map(function (p) {
-    var date = new Date(p.checked_at);
+    // SQLite dates have no timezone — treat as UTC
+    var raw = p.checked_at.replace(' ', 'T');
+    if (!raw.endsWith('Z') && !raw.includes('+')) raw += 'Z';
+    var date = new Date(raw);
     return date.toLocaleDateString('de-DE', {
       day: '2-digit',
       month: '2-digit',

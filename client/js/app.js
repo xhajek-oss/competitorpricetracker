@@ -200,8 +200,13 @@ function formatPrice(price, currency) {
  * Format a date string as relative time
  */
 function formatTimeAgo(dateString) {
+  if (!dateString) return 'Never';
   var now = new Date();
-  var date = new Date(dateString);
+  // SQLite stores dates without timezone — treat as UTC
+  var normalized = dateString.replace(' ', 'T');
+  if (!normalized.endsWith('Z') && !normalized.includes('+')) normalized += 'Z';
+  var date = new Date(normalized);
+  if (isNaN(date.getTime())) return dateString;
   var seconds = Math.floor((now - date) / 1000);
 
   if (seconds < 60) return 'just now';
