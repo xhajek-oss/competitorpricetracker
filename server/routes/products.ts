@@ -4,6 +4,7 @@ import { addPriceRecord } from '../database/models/priceHistory';
 import { createAlert } from '../database/models/alert';
 import { scrapePrice, detectShopType, validateUrlSafety } from '../scraper';
 import { CONFIG } from '../../shared/config';
+import { logger } from '../logger';
 import type { ApiResponse, Product, CreateProductRequest, UpdateProductRequest } from '../../shared/types';
 
 const ALLOWED_INTERVALS = [6, 12, 24];
@@ -17,7 +18,7 @@ router.get('/', (_req: Request, res: Response) => {
     const response: ApiResponse<Product[]> = { success: true, data: products };
     res.json(response);
   } catch (error) {
-    console.error('Failed to fetch products:', error);
+    logger.error({ err: error }, 'Failed to fetch products:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch products' });
   }
 });
@@ -101,7 +102,7 @@ router.post('/', async (req: Request, res: Response) => {
     const response: ApiResponse<Product> = { success: true, data: updatedProduct };
     res.status(201).json(response);
   } catch (error) {
-    console.error('Failed to create product:', error);
+    logger.error({ err: error }, 'Failed to create product:', error);
     res.status(500).json({ success: false, error: 'Failed to create product' });
   }
 });
@@ -124,7 +125,7 @@ router.get('/:id', (req: Request, res: Response) => {
     const response: ApiResponse<Product> = { success: true, data: product };
     res.json(response);
   } catch (error) {
-    console.error('Failed to fetch product:', error);
+    logger.error({ err: error }, 'Failed to fetch product:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch product' });
   }
 });
@@ -160,7 +161,7 @@ router.put('/:id', (req: Request, res: Response) => {
     const response: ApiResponse<Product> = { success: true, data: product };
     res.json(response);
   } catch (error) {
-    console.error('Failed to update product:', error);
+    logger.error({ err: error }, 'Failed to update product:', error);
     res.status(500).json({ success: false, error: 'Failed to update product' });
   }
 });
@@ -182,7 +183,7 @@ router.delete('/:id', (req: Request, res: Response) => {
 
     res.json({ success: true, data: { deleted: true } });
   } catch (error) {
-    console.error('Failed to delete product:', error);
+    logger.error({ err: error }, 'Failed to delete product:', error);
     res.status(500).json({ success: false, error: 'Failed to delete product' });
   }
 });

@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { CONFIG } from '../../shared/config';
+import { logger } from '../logger';
 import type { NotificationPayload } from '../../shared/types';
 
 let resendClient: Resend | null = null;
@@ -18,10 +19,7 @@ export async function sendEmail(payload: NotificationPayload): Promise<boolean> 
   const client = getResendClient();
 
   if (!client) {
-    console.log('[DEV MODE] Email notification:');
-    console.log(`   To: ${payload.to}`);
-    console.log(`   Subject: ${payload.subject}`);
-    console.log(`   ${payload.productName}: ${payload.currency}${payload.oldPrice.toFixed(2)} -> ${payload.currency}${payload.newPrice.toFixed(2)} (${payload.changePercent > 0 ? '+' : ''}${payload.changePercent.toFixed(1)}%)`);
+    logger.info({ to: payload.to, subject: payload.subject, product: payload.productName }, 'Email notification (dev mode)');
     return true;
   }
 
@@ -36,7 +34,7 @@ export async function sendEmail(payload: NotificationPayload): Promise<boolean> 
     });
     return true;
   } catch (error) {
-    console.error('Failed to send email:', error);
+    logger.error({ err: error }, 'Failed to send email');
     return false;
   }
 }

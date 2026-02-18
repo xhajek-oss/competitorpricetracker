@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getNotifications } from '../database/models/notification';
+import { logger } from '../logger';
 import type { ApiResponse, Notification } from '../../shared/types';
 
 const router = Router();
@@ -17,7 +18,7 @@ router.get('/', (req: Request, res: Response) => {
     const response: ApiResponse<Notification[]> = { success: true, data: notifications };
     res.json(response);
   } catch (error) {
-    console.error('Failed to fetch notifications:', error);
+    logger.error({ err: error }, 'Failed to fetch notifications');
     res.status(500).json({ success: false, error: 'Failed to fetch notifications' });
   }
 });

@@ -3,9 +3,10 @@ import { CONFIG } from '../../shared/config';
 import { createNotification, updateNotificationStatus } from '../database/models/notification';
 import { sendEmail } from './email';
 import { sendTelegramNotification } from './telegram';
+import { logger } from '../logger';
 
 export async function processAlertQueue(alerts: Alert[], change: PriceChange): Promise<void> {
-  console.log(`Processing ${alerts.length} alert(s) for ${change.product.name || change.product.url}`);
+  logger.info({ alertCount: alerts.length, product: change.product.name || change.product.url }, 'Processing alert queue');
 
   for (const alert of alerts) {
     try {
@@ -44,16 +45,16 @@ export async function processAlertQueue(alerts: Alert[], change: PriceChange): P
       updateNotificationStatus(notification.id, success ? 'sent' : 'failed');
 
       if (success) {
-        console.log(`  Notification sent for alert #${alert.id}`);
+        logger.info({ alertId: alert.id }, 'Notification sent');
       } else {
-        console.log(`  Notification failed for alert #${alert.id}`);
+        logger.warn({ alertId: alert.id }, 'Notification failed');
       }
 
       // Small delay between notifications to avoid rate limits
       await new Promise(resolve => setTimeout(resolve, 1000));
 
     } catch (error) {
-      console.error(`  Error processing alert #${alert.id}:`, error);
+      logger.error({ alertId: alert.id, err: error }, 'Error processing alert');
     }
   }
 }

@@ -6,6 +6,7 @@ import path from 'path';
 import { CONFIG } from '../shared/config';
 import { getDb } from './database/connection';
 import { startScheduler } from './scheduler/priceChecker';
+import { logger } from './logger';
 
 // Import routes
 import productsRouter from './routes/products';
@@ -125,30 +126,26 @@ if (!process.env.VITEST) {
   startScheduler();
 
   const server = app.listen(CONFIG.PORT, () => {
-    console.log(`Price Tracker running at http://localhost:${CONFIG.PORT}`);
-    if (CONFIG.API_KEY) {
-      console.log('API key authentication: ENABLED');
-    } else {
-      console.log('API key authentication: DISABLED (set API_KEY in .env for production)');
-    }
+    logger.info({ port: CONFIG.PORT }, `Price Tracker running at http://localhost:${CONFIG.PORT}`);
+    logger.info({ auth: !!CONFIG.API_KEY }, `API key authentication: ${CONFIG.API_KEY ? 'ENABLED' : 'DISABLED'}`);
   });
 
   // --- Graceful Shutdown ---
   function shutdown(signal: string) {
-    console.log(`\n${signal} received — shutting down gracefully...`);
+    logger.info({ signal }, 'Shutting down gracefully...');
 
     server.close(() => {
-      console.log('HTTP server closed');
+      logger.info('HTTP server closed');
       try {
         db.close();
-        console.log('Database connection closed');
+        logger.info('Database connection closed');
       } catch { /* already closed */ }
       process.exit(0);
     });
 
     // Force exit after 10 seconds if connections hang
     setTimeout(() => {
-      console.error('Forced shutdown after timeout');
+      logger.error('Forced shutdown after timeout');
       process.exit(1);
     }, 10_000).unref();
   }

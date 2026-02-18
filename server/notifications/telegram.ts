@@ -1,12 +1,12 @@
 import { CONFIG } from '../../shared/config';
+import { logger } from '../logger';
 import type { NotificationPayload } from '../../shared/types';
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
 export async function sendTelegramNotification(payload: NotificationPayload): Promise<boolean> {
   if (!CONFIG.TELEGRAM_BOT_TOKEN || !CONFIG.TELEGRAM_CHAT_ID) {
-    console.log('[DEV MODE] Telegram notification:');
-    console.log(`   ${payload.productName}: ${payload.currency}${payload.oldPrice.toFixed(2)} -> ${payload.currency}${payload.newPrice.toFixed(2)} (${payload.changePercent > 0 ? '+' : ''}${payload.changePercent.toFixed(1)}%)`);
+    logger.info({ product: payload.productName }, 'Telegram notification (dev mode)');
     return true;
   }
 
@@ -27,14 +27,14 @@ export async function sendTelegramNotification(payload: NotificationPayload): Pr
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('Telegram API error:', response.status, error);
+      logger.error({ status: response.status, body: error }, 'Telegram API error');
       return false;
     }
 
     const data = await response.json() as { ok: boolean };
     return data.ok === true;
   } catch (error) {
-    console.error('Failed to send Telegram notification:', error);
+    logger.error({ err: error }, 'Failed to send Telegram notification');
     return false;
   }
 }

@@ -3,6 +3,7 @@ import { getProductsDueForCheck, updateProduct } from '../database/models/produc
 import { addPriceRecord } from '../database/models/priceHistory';
 import { detectPriceChange, evaluateAlerts } from '../database/priceDetection';
 import { scrapePrice } from '../scraper';
+import { logger } from '../logger';
 
 let notificationHandler: ((alerts: any[], change: any) => Promise<void>) | null = null;
 
@@ -11,7 +12,7 @@ try {
   const { processAlertQueue } = require('../notifications/queue');
   notificationHandler = processAlertQueue;
 } catch {
-  console.log('Notification module not available yet -- alerts will be logged to console');
+  logger.warn('Notification module not available -- alerts will be logged only');
 }
 
 let isRunning = false;
@@ -20,28 +21,28 @@ export function startScheduler(): void {
   // Run every hour at minute 0
   cron.schedule('0 * * * *', async () => {
     if (isRunning) {
-      console.log(`[${new Date().toISOString()}] Previous check still running, skipping this cycle`);
+      logger.warn('Previous check still running, skipping this cycle');
       return;
     }
     isRunning = true;
     try {
-      console.log(`[${new Date().toISOString()}] Running scheduled price check...`);
+      logger.info('Running scheduled price check...');
       await checkDueProducts();
     } finally {
       isRunning = false;
     }
   });
 
-  console.log('Scheduler started -- checking prices every hour');
+  logger.info('Scheduler started -- checking prices every hour');
 }
 
 async function checkDueProducts(): Promise<void> {
   const products = getProductsDueForCheck();
-  console.log(`${products.length} product(s) due for checking`);
+  logger.info({ count: products.length }, `${products.length} product(s) due for checking`);
 
   for (const product of products) {
     try {
-      console.log(`Checking: ${product.name || product.url}`);
+      logger.info({ productId: product.id, name: product.name || product.url }, 'Checking product');
       const result = await scrapePrice(product.url);
 
       if (result.success && result.price !== null) {
@@ -59,7 +60,8 @@ async function checkDueProducts(): Promise<void> {
         });
 
         if (change) {
-          console.log(
+          logger.info(
+            { productId: product.id, oldPrice: change.oldPrice, newPrice: change.newPrice, direction: change.direction, changePercent: change.changePercent },
             `Price changed for ${product.name}: ${change.oldPrice} -> ${change.newPrice} (${change.direction} ${change.changePercent.toFixed(1)}%)`
           );
           const triggered = evaluateAlerts(change);
@@ -67,14 +69,14 @@ async function checkDueProducts(): Promise<void> {
           if (triggered.length > 0 && notificationHandler) {
             await notificationHandler(triggered, change);
           } else if (triggered.length > 0) {
-            console.log(`${triggered.length} alert(s) triggered but notification module not loaded`);
+            logger.warn({ alertCount: triggered.length }, 'Alerts triggered but notification module not loaded');
           }
         }
       } else {
-        console.log(`Failed to scrape ${product.url}: ${result.error}`);
+        logger.warn({ productId: product.id, url: product.url, error: result.error }, 'Failed to scrape product');
       }
     } catch (error) {
-      console.error(`Error checking ${product.url}:`, error);
+      logger.error({ productId: product.id, url: product.url, err: error }, 'Error checking product');
     }
 
     // Small delay between scrapes to be polite

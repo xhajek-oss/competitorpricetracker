@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getAlerts, createAlert, updateAlert, deleteAlert } from '../database/models/alert';
 import { getProductById } from '../database/models/product';
+import { logger } from '../logger';
 import type { ApiResponse, Alert, CreateAlertRequest, UpdateAlertRequest } from '../../shared/types';
 
 const VALID_ALERT_TYPES = ['price_change_any', 'price_drop_percent', 'price_below'];
@@ -19,7 +20,7 @@ router.get('/', (req: Request, res: Response) => {
     const response: ApiResponse<Alert[]> = { success: true, data: alerts };
     res.json(response);
   } catch (error) {
-    console.error('Failed to fetch alerts:', error);
+    logger.error({ err: error }, 'Failed to fetch alerts:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch alerts' });
   }
 });
@@ -64,7 +65,7 @@ router.post('/', (req: Request, res: Response) => {
     const response: ApiResponse<Alert> = { success: true, data: alert };
     res.status(201).json(response);
   } catch (error) {
-    console.error('Failed to create alert:', error);
+    logger.error({ err: error }, 'Failed to create alert:', error);
     res.status(500).json({ success: false, error: 'Failed to create alert' });
   }
 });
@@ -108,7 +109,7 @@ router.put('/:id', (req: Request, res: Response) => {
     const response: ApiResponse<Alert> = { success: true, data: alert };
     res.json(response);
   } catch (error) {
-    console.error('Failed to update alert:', error);
+    logger.error({ err: error }, 'Failed to update alert:', error);
     res.status(500).json({ success: false, error: 'Failed to update alert' });
   }
 });
@@ -130,7 +131,7 @@ router.delete('/:id', (req: Request, res: Response) => {
 
     res.json({ success: true, data: { deleted: true } });
   } catch (error) {
-    console.error('Failed to delete alert:', error);
+    logger.error({ err: error }, 'Failed to delete alert:', error);
     res.status(500).json({ success: false, error: 'Failed to delete alert' });
   }
 });

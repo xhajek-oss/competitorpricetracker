@@ -3,6 +3,7 @@ import { getProductById, updateProduct } from '../database/models/product';
 import { getPriceHistory, addPriceRecord } from '../database/models/priceHistory';
 import { detectPriceChange, evaluateAlerts } from '../database/priceDetection';
 import { scrapePrice } from '../scraper';
+import { logger } from '../logger';
 import type { ApiResponse, PriceRecord, Product } from '../../shared/types';
 
 const router = Router();
@@ -36,7 +37,7 @@ router.get('/products/:id/prices', (req: Request, res: Response) => {
     const response: ApiResponse<PriceRecord[]> = { success: true, data: prices };
     res.json(response);
   } catch (error) {
-    console.error('Failed to fetch price history:', error);
+    logger.error({ err: error }, 'Failed to fetch price history:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch price history' });
   }
 });
@@ -80,7 +81,7 @@ router.post('/products/:id/check', async (req: Request, res: Response) => {
           const { processAlertQueue } = require('../notifications/queue');
           await processAlertQueue(triggered, change);
         } catch {
-          console.log(`${triggered.length} alert(s) triggered but notification module not loaded`);
+          logger.warn({ alertCount: triggered.length }, 'Alerts triggered but notification module not loaded');
         }
       }
     }
@@ -102,7 +103,7 @@ router.post('/products/:id/check', async (req: Request, res: Response) => {
     };
     res.json(response);
   } catch (error) {
-    console.error('Failed to check price:', error);
+    logger.error({ err: error }, 'Failed to check price:', error);
     res.status(500).json({ success: false, error: 'Failed to check price' });
   }
 });
