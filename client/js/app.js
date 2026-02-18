@@ -6,6 +6,9 @@ var refreshInterval = null;
  * Initialize the app on page load
  */
 async function init() {
+  // Apply saved theme
+  applyTheme();
+
   // Set up event listeners (including login form)
   setupEventListeners();
 
@@ -100,6 +103,9 @@ function setupEventListeners() {
       });
     }
   });
+
+  // CSV import handlers
+  setupImportHandlers();
 
   // Login form submission
   document.getElementById('form-login').addEventListener('submit', async function (e) {
@@ -519,6 +525,88 @@ async function updateCompareChart() {
       },
     },
   });
+}
+
+/**
+ * Dark mode toggle
+ */
+function applyTheme() {
+  var saved = localStorage.getItem('cpt_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  var btn = document.querySelector('.theme-toggle');
+  if (btn) btn.textContent = saved === 'dark' ? '☀️' : '🌙';
+}
+
+function toggleTheme() {
+  var current = document.documentElement.getAttribute('data-theme') || 'light';
+  var next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('cpt_theme', next);
+  var btn = document.querySelector('.theme-toggle');
+  if (btn) btn.textContent = next === 'dark' ? '☀️' : '🌙';
+}
+
+/**
+ * CSV Import
+ */
+function setupImportHandlers() {
+  var fileInput = document.getElementById('import-file');
+  if (fileInput) {
+    fileInput.addEventListener('change', function () {
+      var file = this.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var text = e.target.result;
+        var lines = text.split('\n').filter(function (l) { return l.trim().length > 0; });
+        var preview = document.getElementById('import-preview');
+        var content = document.getElementById('import-preview-content');
+        if (preview && content) {
+          content.textContent = lines.length + ' line(s) found:\n' + lines.slice(0, 5).join('\n') +
+            (lines.length > 5 ? '\n... and ' + (lines.length - 5) + ' more' : '');
+          preview.style.display = 'block';
+        }
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  var form = document.getElementById('form-import');
+  if (form) {
+    form.addEventListener('submit', handleCsvImport);
+  }
+}
+
+async function handleCsvImport(e) {
+  e.preventDefault();
+  var fileInput = document.getElementById('import-file');
+  var file = fileInput.files[0];
+  if (!file) {
+    showToast('Please select a CSV file', 'error');
+    return;
+  }
+
+  var submitBtn = document.getElementById('btn-submit-import');
+  var btnText = submitBtn.querySelector('.btn-text');
+  var btnLoading = submitBtn.querySelector('.btn-loading');
+  submitBtn.disabled = true;
+  btnText.style.display = 'none';
+  btnLoading.style.display = 'inline-flex';
+
+  try {
+    var text = await file.text();
+    var result = await apiRequest('POST', '/products/import', { csv: text });
+    closeModal('modal-import');
+    showToast('Imported ' + result.imported + ' product(s)' +
+      (result.failed > 0 ? ' (' + result.failed + ' failed)' : ''), 'success');
+    renderProducts();
+  } catch (err) {
+    showToast('Import failed: ' + err.message, 'error');
+  } finally {
+    submitBtn.disabled = false;
+    btnText.style.display = 'inline';
+    btnLoading.style.display = 'none';
+  }
 }
 
 // Initialize on DOM ready

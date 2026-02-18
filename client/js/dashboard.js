@@ -46,6 +46,20 @@ function renderProductCard(product) {
       ? formatPrice(product.current_price, product.currency)
       : 'No price yet';
 
+  // Price change indicator
+  var changeBadge = '';
+  if (product.current_price !== null && product.previous_price !== null && product.previous_price !== undefined) {
+    var diff = product.current_price - product.previous_price;
+    if (diff !== 0) {
+      var pct = Math.abs((diff / product.previous_price) * 100).toFixed(1);
+      if (diff < 0) {
+        changeBadge = '<span class="price-change price-change-down">&#x2193; ' + pct + '%</span>';
+      } else {
+        changeBadge = '<span class="price-change price-change-up">&#x2191; ' + pct + '%</span>';
+      }
+    }
+  }
+
   var urlDisplay = product.url;
   if (urlDisplay.length > 40) urlDisplay = urlDisplay.substring(0, 37) + '...';
 
@@ -73,6 +87,7 @@ function renderProductCard(product) {
     '  </div>' +
     '  <div class="product-card-price">' +
     escapeHtml(price) +
+    ' ' + changeBadge +
     '</div>' +
     '  <div class="product-card-url"><a href="' +
     escapeHtml(product.url) +

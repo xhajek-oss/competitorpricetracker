@@ -9,7 +9,7 @@
 export type ShopType = 'amazon' | 'ebay' | 'shopify' | 'generic';
 export type CheckInterval = 6 | 12 | 24;
 export type AlertType = 'price_drop_percent' | 'price_change_any' | 'price_below';
-export type NotificationMethod = 'email' | 'telegram' | 'both';
+export type NotificationMethod = 'email' | 'telegram' | 'webhook' | 'both';
 export type NotificationStatus = 'sent' | 'failed' | 'pending';
 
 export interface Product {

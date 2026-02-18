@@ -5,7 +5,7 @@ import { logger } from '../logger';
 import type { ApiResponse, Alert, CreateAlertRequest, UpdateAlertRequest } from '../../shared/types';
 
 const VALID_ALERT_TYPES = ['price_change_any', 'price_drop_percent', 'price_below'];
-const VALID_METHODS = ['email', 'telegram', 'both'];
+const VALID_METHODS = ['email', 'telegram', 'webhook', 'both'];
 
 const router = Router();
 

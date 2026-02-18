@@ -1,23 +1,11 @@
-import { chromium, Browser } from 'playwright';
 import type { ScrapeResult } from '../../shared/types';
 import { CONFIG } from '../../shared/config';
 import { parsePrice } from './priceParser';
-
-let browser: Browser | null = null;
-
-async function getBrowser(): Promise<Browser> {
-  if (!browser || !browser.isConnected()) {
-    browser = await chromium.launch({ headless: CONFIG.SCRAPER_HEADLESS });
-  }
-  return browser;
-}
+import { getBrowser, USER_AGENT } from './browser';
 
 export async function scrapeGeneric(url: string): Promise<ScrapeResult> {
   const b = await getBrowser();
-  const context = await b.newContext({
-    userAgent:
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  });
+  const context = await b.newContext({ userAgent: USER_AGENT });
   const page = await context.newPage();
 
   try {

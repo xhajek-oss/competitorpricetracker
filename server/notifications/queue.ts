@@ -3,6 +3,7 @@ import { CONFIG } from '../../shared/config';
 import { createNotification, updateNotificationStatus } from '../database/models/notification';
 import { sendEmail } from './email';
 import { sendTelegramNotification } from './telegram';
+import { sendWebhook } from './webhook';
 import { logger } from '../logger';
 
 export async function processAlertQueue(alerts: Alert[], change: PriceChange): Promise<void> {
@@ -39,6 +40,10 @@ export async function processAlertQueue(alerts: Alert[], change: PriceChange): P
       if (alert.notification_method === 'telegram' || alert.notification_method === 'both') {
         const telegramSuccess = await sendTelegramNotification(payload);
         success = success || telegramSuccess;
+      }
+
+      if (alert.notification_method === 'webhook') {
+        success = await sendWebhook(change);
       }
 
       // Update notification status

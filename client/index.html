@@ -10,9 +10,12 @@
 <body>
   <div id="app">
     <header>
-      <div class="header-content">
-        <h1>📊 Price Tracker</h1>
-        <p class="subtitle">Monitor competitor prices</p>
+      <div class="header-content" style="display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <h1>📊 Price Tracker</h1>
+          <p class="subtitle">Monitor competitor prices</p>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
       </div>
     </header>
 
@@ -23,8 +26,9 @@
       <section id="view-products" class="view active">
         <div class="view-header">
           <h2>Tracked Products</h2>
-          <div style="display:flex; gap:8px;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <button class="btn btn-ghost" onclick="showCompareView()">Compare</button>
+            <button class="btn btn-ghost" onclick="openModal('modal-import')">Import CSV</button>
             <button id="btn-add-product" class="btn btn-primary">+ Add Product</button>
           </div>
         </div>
@@ -132,7 +136,8 @@
             <select id="alert-method">
               <option value="email">Email</option>
               <option value="telegram">Telegram</option>
-              <option value="both">Both</option>
+              <option value="webhook">Webhook</option>
+              <option value="both">Email + Telegram</option>
             </select>
           </div>
           <div class="form-actions">
@@ -152,6 +157,37 @@
       </p>
     </div>
   </footer>
+
+  <!-- CSV Import Modal -->
+  <div id="modal-import" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Import Products from CSV</h3>
+        <button class="modal-close" onclick="closeModal('modal-import')">&times;</button>
+      </div>
+      <form id="form-import">
+        <div class="form-group">
+          <label for="import-file">CSV File</label>
+          <input type="file" id="import-file" accept=".csv,.txt" required>
+          <small>Format: url,name,check_interval (header row optional). One product per line.</small>
+        </div>
+        <div id="import-preview" style="display:none; margin-bottom:16px;">
+          <div style="font-size:0.8125rem; color:var(--color-text-secondary); padding:8px 12px; background:var(--color-bg); border-radius:var(--radius-sm); max-height:120px; overflow-y:auto;">
+            <div id="import-preview-content"></div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('modal-import')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-import">
+            <span class="btn-text">Import</span>
+            <span class="btn-loading" style="display:none">
+              <span class="spinner"></span> Importing...
+            </span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Login Modal -->
   <div id="modal-login" class="modal">

@@ -3,19 +3,38 @@ import { getAllProducts, getProductById, createProduct, updateProduct, deletePro
 import { addPriceRecord } from '../database/models/priceHistory';
 import { createAlert } from '../database/models/alert';
 import { scrapePrice, detectShopType, validateUrlSafety } from '../scraper';
+import { getDb } from '../database/connection';
 import { CONFIG } from '../../shared/config';
 import { logger } from '../logger';
 import type { ApiResponse, Product, CreateProductRequest, UpdateProductRequest } from '../../shared/types';
+
+type ProductWithChange = Product & { previous_price?: number | null };
+
+function enrichProductsWithPreviousPrice(products: Product[]): ProductWithChange[] {
+  if (products.length === 0) return [];
+  const db = getDb();
+  const stmt = db.prepare(`
+    SELECT price FROM price_history
+    WHERE product_id = ?
+    ORDER BY checked_at DESC
+    LIMIT 1 OFFSET 1
+  `);
+  return products.map((p) => {
+    const row = stmt.get(p.id) as { price: number } | undefined;
+    return { ...p, previous_price: row ? row.price : null };
+  });
+}
 
 const ALLOWED_INTERVALS = [6, 12, 24];
 
 const router = Router();
 
-// GET / — List all products
+// GET / — List all products (with previous_price for change indicators)
 router.get('/', (_req: Request, res: Response) => {
   try {
     const products = getAllProducts();
-    const response: ApiResponse<Product[]> = { success: true, data: products };
+    const enriched = enrichProductsWithPreviousPrice(products);
+    const response: ApiResponse<ProductWithChange[]> = { success: true, data: enriched };
     res.json(response);
   } catch (error) {
     logger.error({ err: error }, 'Failed to fetch products:', error);
@@ -185,6 +204,101 @@ router.delete('/:id', (req: Request, res: Response) => {
   } catch (error) {
     logger.error({ err: error }, 'Failed to delete product:', error);
     res.status(500).json({ success: false, error: 'Failed to delete product' });
+  }
+});
+
+// POST /import — Bulk import products from CSV data
+router.post('/import', async (req: Request, res: Response) => {
+  try {
+    const { csv } = req.body as { csv: string };
+    if (!csv || typeof csv !== 'string') {
+      res.status(400).json({ success: false, error: 'CSV data is required in the "csv" field' });
+      return;
+    }
+
+    const lines = csv.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+    if (lines.length === 0) {
+      res.status(400).json({ success: false, error: 'CSV is empty' });
+      return;
+    }
+
+    // Detect header row
+    const firstLine = lines[0].toLowerCase();
+    const hasHeader = firstLine.includes('url');
+    const dataLines = hasHeader ? lines.slice(1) : lines;
+
+    const existing = getAllProducts();
+    const maxSlots = CONFIG.MAX_PRODUCTS - existing.length;
+
+    if (dataLines.length > maxSlots) {
+      res.status(400).json({
+        success: false,
+        error: `Can only import ${maxSlots} more products (${existing.length}/${CONFIG.MAX_PRODUCTS} used)`,
+      });
+      return;
+    }
+
+    const results: Array<{ url: string; success: boolean; error?: string }> = [];
+
+    for (const line of dataLines) {
+      // Parse CSV line (handles quoted fields)
+      const parts = line.match(/(?:^|,)("(?:[^"]*(?:""[^"]*)*)"|[^,]*)/g);
+      if (!parts) {
+        results.push({ url: line, success: false, error: 'Invalid CSV format' });
+        continue;
+      }
+
+      const fields = parts.map((p) =>
+        p.replace(/^,/, '').replace(/^"(.*)"$/, '$1').replace(/""/g, '"').trim()
+      );
+
+      const url = fields[0];
+      const name = fields[1] || undefined;
+      const interval = fields[2] ? parseInt(fields[2], 10) : 24;
+
+      if (!url) {
+        results.push({ url: '', success: false, error: 'Empty URL' });
+        continue;
+      }
+
+      try {
+        new URL(url);
+      } catch {
+        results.push({ url, success: false, error: 'Invalid URL format' });
+        continue;
+      }
+
+      if (![6, 12, 24].includes(interval)) {
+        results.push({ url, success: false, error: 'Invalid check_interval (must be 6, 12, or 24)' });
+        continue;
+      }
+
+      try {
+        const safety = await validateUrlSafety(url);
+        if (!safety.safe) {
+          results.push({ url, success: false, error: 'URL blocked for security reasons' });
+          continue;
+        }
+
+        const shopType = detectShopType(url);
+        const product = createProduct({ url, name, shop_type: shopType, check_interval: interval as 6 | 12 | 24 });
+        createAlert({ product_id: product.id, alert_type: 'price_change_any', notification_method: 'email' });
+        results.push({ url, success: true });
+      } catch (error) {
+        results.push({ url, success: false, error: 'Failed to create product' });
+      }
+    }
+
+    const imported = results.filter((r) => r.success).length;
+    const failed = results.filter((r) => !r.success).length;
+
+    res.status(201).json({
+      success: true,
+      data: { imported, failed, total: results.length, details: results },
+    });
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to import products');
+    res.status(500).json({ success: false, error: 'Failed to import products' });
   }
 });
 

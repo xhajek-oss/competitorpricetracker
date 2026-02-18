@@ -7,6 +7,7 @@ import { CONFIG } from '../shared/config';
 import { getDb } from './database/connection';
 import { startScheduler } from './scheduler/priceChecker';
 import { startBackupScheduler, createBackup } from './backup';
+import { closeBrowser } from './scraper';
 import { logger } from './logger';
 
 // Import routes
@@ -14,6 +15,8 @@ import productsRouter from './routes/products';
 import pricesRouter from './routes/prices';
 import alertsRouter from './routes/alerts';
 import notificationsRouter from './routes/notifications';
+import statsRouter from './routes/stats';
+import metricsRouter, { incrementMetric } from './routes/metrics';
 
 const app = express();
 
@@ -39,7 +42,7 @@ app.use(cors({
 }));
 
 // --- Body parser with size limit ---
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({ limit: '100kb' }));
 
 // --- Rate Limiting ---
 const apiLimiter = rateLimit({
@@ -58,22 +61,53 @@ const scrapeLimiter = rateLimit({
   message: { success: false, error: 'Scrape rate limit exceeded. Try again later.' },
 });
 
-// --- API Key Authentication ---
+// --- Multi-user API Key Authentication ---
+// Supports single API_KEY or comma-separated API_KEYS="label1:key1,label2:key2"
+function parseApiKeys(): Map<string, string> {
+  const keys = new Map<string, string>();
+  if (CONFIG.API_KEY) {
+    keys.set(CONFIG.API_KEY, 'default');
+  }
+  if (CONFIG.API_KEYS) {
+    for (const entry of CONFIG.API_KEYS.split(',')) {
+      const colonIdx = entry.indexOf(':');
+      if (colonIdx > 0) {
+        const label = entry.slice(0, colonIdx).trim();
+        const key = entry.slice(colonIdx + 1).trim();
+        if (key) keys.set(key, label);
+      } else if (entry.trim()) {
+        keys.set(entry.trim(), 'unnamed');
+      }
+    }
+  }
+  return keys;
+}
+
+const validApiKeys = parseApiKeys();
+
 function apiKeyAuth(req: express.Request, res: express.Response, next: express.NextFunction): void {
-  // Skip auth if no API key is configured (dev mode)
-  if (!CONFIG.API_KEY) {
+  // Skip auth if no API keys configured (dev mode)
+  if (validApiKeys.size === 0) {
     next();
     return;
   }
 
-  const providedKey = req.headers['x-api-key'];
-  if (providedKey === CONFIG.API_KEY) {
+  const providedKey = req.headers['x-api-key'] as string | undefined;
+  if (providedKey && validApiKeys.has(providedKey)) {
+    const label = validApiKeys.get(providedKey)!;
+    logger.debug({ user: label }, 'Authenticated request');
     next();
     return;
   }
 
   res.status(401).json({ success: false, error: 'Unauthorized. Provide a valid X-API-Key header.' });
 }
+
+// --- API request counter ---
+app.use('/api', (_req, _res, next) => { incrementMetric('api_requests'); next(); });
+
+// --- Prometheus metrics (public, no auth) ---
+app.use('/metrics', metricsRouter);
 
 // --- Health check (public, no auth) ---
 const startedAt = new Date().toISOString();
@@ -96,12 +130,12 @@ app.get('/api/health', (_req, res) => {
 
 // --- Auth check endpoint (for frontend) ---
 app.get('/api/auth/check', (req, res) => {
-  if (!CONFIG.API_KEY) {
+  if (validApiKeys.size === 0) {
     res.json({ success: true, data: { auth_required: false } });
     return;
   }
-  const providedKey = req.headers['x-api-key'];
-  const authenticated = providedKey === CONFIG.API_KEY;
+  const providedKey = req.headers['x-api-key'] as string | undefined;
+  const authenticated = !!(providedKey && validApiKeys.has(providedKey));
   res.json({ success: true, data: { auth_required: true, authenticated } });
 });
 
@@ -115,6 +149,7 @@ app.use('/api/products', apiLimiter, apiKeyAuth, productsRouter);
 app.use('/api', apiLimiter, apiKeyAuth, pricesRouter);
 app.use('/api/alerts', apiLimiter, apiKeyAuth, alertsRouter);
 app.use('/api/notifications', apiLimiter, apiKeyAuth, notificationsRouter);
+app.use('/api/stats', apiLimiter, apiKeyAuth, statsRouter);
 
 // Apply stricter rate limit to scrape-triggering endpoints
 app.use('/api/products/:id/check', scrapeLimiter);
@@ -139,8 +174,9 @@ if (!process.env.VITEST) {
   function shutdown(signal: string) {
     logger.info({ signal }, 'Shutting down gracefully...');
 
-    server.close(() => {
+    server.close(async () => {
       logger.info('HTTP server closed');
+      await closeBrowser();
       try {
         db.close();
         logger.info('Database connection closed');

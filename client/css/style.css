@@ -31,6 +31,67 @@
   --transition: 0.2s ease;
 }
 
+/* --- Dark Mode --- */
+[data-theme="dark"] {
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-primary-light: rgba(59, 130, 246, 0.15);
+  --color-success: #22c55e;
+  --color-success-light: rgba(34, 197, 94, 0.15);
+  --color-danger: #ef4444;
+  --color-danger-light: rgba(239, 68, 68, 0.15);
+  --color-warning: #f59e0b;
+  --color-warning-light: rgba(245, 158, 11, 0.15);
+  --color-bg: #0f172a;
+  --color-surface: #1e293b;
+  --color-text: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-border: #334155;
+  --color-border-hover: #475569;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-modal: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .shop-badge-amazon {
+  background: #3d2800;
+  color: #fb923c;
+}
+
+[data-theme="dark"] .shop-badge-ebay {
+  background: #0c2d48;
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .shop-badge-shopify {
+  background: #052e16;
+  color: #4ade80;
+}
+
+[data-theme="dark"] .shop-badge-generic {
+  background: #1e293b;
+  color: #94a3b8;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: all var(--transition);
+  color: var(--color-text);
+}
+
+.theme-toggle:hover {
+  background: var(--color-bg);
+  border-color: var(--color-border-hover);
+}
+
 /* --- Reset & Base --- */
 *,
 *::before,

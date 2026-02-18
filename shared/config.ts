@@ -17,6 +17,7 @@ export const CONFIG = {
   // Scraper
   SCRAPER_TIMEOUT_MS: parseInt(process.env.SCRAPER_TIMEOUT_MS || '30000', 10),
   SCRAPER_HEADLESS: process.env.SCRAPER_HEADLESS !== 'false',
+  PROXY_URL: process.env.PROXY_URL || '',
 
   // Notifications - Email (Resend)
   RESEND_API_KEY: process.env.RESEND_API_KEY || '',
@@ -27,6 +28,9 @@ export const CONFIG = {
   TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || '',
   TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID || '',
 
+  // Notifications - Webhook (optional)
+  WEBHOOK_URL: process.env.WEBHOOK_URL || '',
+
   // Defaults
   DEFAULT_CHECK_INTERVAL: 24 as const,
   DEFAULT_CURRENCY: 'EUR',
@@ -34,6 +38,7 @@ export const CONFIG = {
 
   // Security
   API_KEY: process.env.API_KEY || '',
+  API_KEYS: process.env.API_KEYS || '',  // Comma-separated: "label1:key1,label2:key2"
   ALLOWED_ORIGIN: process.env.ALLOWED_ORIGIN || '',
 
   // Rate Limiting

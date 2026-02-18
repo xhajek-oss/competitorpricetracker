@@ -5,7 +5,18 @@ import { scrapeAmazon } from './amazon';
 import { scrapeEbay } from './ebay';
 import { scrapeShopify } from './shopify';
 import { scrapeGeneric } from './generic';
+import { closeBrowser } from './browser';
 import { logger } from '../logger';
+
+// Lazy-load metrics to avoid circular imports
+function recordMetric(key: string): void {
+  try {
+    const { incrementMetric } = require('../routes/metrics');
+    incrementMetric(key);
+  } catch { /* metrics not loaded yet */ }
+}
+
+export { closeBrowser };
 
 // --- Concurrency limiter ---
 let activeScrapes = 0;
@@ -45,10 +56,14 @@ async function scrapePriceWithRetry(url: string, shopType: ShopType): Promise<Sc
         default: result = await scrapeGeneric(url); break;
       }
 
-      if (result.success) return result;
+      if (result.success) {
+        recordMetric('scrape_success');
+        return result;
+      }
 
       lastResult = result;
       if (attempt < MAX_RETRIES) {
+        recordMetric('scrape_retry_total');
         const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
         logger.warn({ url, attempt, maxRetries: MAX_RETRIES, delay }, `Scrape failed, retrying in ${delay}ms...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
@@ -70,6 +85,7 @@ async function scrapePriceWithRetry(url: string, shopType: ShopType): Promise<Sc
     }
   }
 
+  recordMetric('scrape_failure');
   logger.error({ url, shopType }, `All ${MAX_RETRIES} scrape attempts failed`);
   return lastResult!;
 }
@@ -145,6 +161,8 @@ export async function scrapePrice(url: string): Promise<ScrapeResult> {
       shopType,
     };
   }
+
+  recordMetric('scrape_total');
 
   // Wait for a scrape slot
   await acquireScrapeSlot();
