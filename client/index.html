@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Competitor Price Tracker</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="header-content">
+        <h1>📊 Price Tracker</h1>
+        <p class="subtitle">Monitor competitor prices</p>
+      </div>
+    </header>
+
+    <main>
+      <div id="toast-container"></div>
+
+      <!-- Product List View (default) -->
+      <section id="view-products" class="view active">
+        <div class="view-header">
+          <h2>Tracked Products</h2>
+          <button id="btn-add-product" class="btn btn-primary">+ Add Product</button>
+        </div>
+        <div id="product-list" class="product-grid">
+          <!-- Products rendered here by JS -->
+        </div>
+        <div id="empty-state" class="empty-state" style="display:none">
+          <div class="empty-icon">🔍</div>
+          <h3>No products tracked yet</h3>
+          <p>Add your first product URL to start monitoring prices.</p>
+          <button class="btn btn-primary" onclick="document.getElementById('btn-add-product').click()">Add Product</button>
+        </div>
+      </section>
+
+      <!-- Product Detail View -->
+      <section id="view-detail" class="view">
+        <button id="btn-back" class="btn btn-ghost">&larr; Back to products</button>
+        <div id="product-detail">
+          <!-- Rendered by JS -->
+        </div>
+      </section>
+
+      <!-- Notifications View -->
+      <section id="view-notifications" class="view">
+        <h2>Notification History</h2>
+        <div id="notification-list"></div>
+      </section>
+    </main>
+
+    <!-- Add Product Modal -->
+    <div id="modal-add-product" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Add Product to Track</h3>
+          <button class="modal-close" onclick="closeModal('modal-add-product')">&times;</button>
+        </div>
+        <form id="form-add-product">
+          <div class="form-group">
+            <label for="product-url">Product URL *</label>
+            <input type="url" id="product-url" placeholder="https://www.amazon.de/dp/..." required>
+            <small>Supports Amazon, eBay, Shopify, and most online shops</small>
+          </div>
+          <div class="form-group">
+            <label for="product-name">Name (optional)</label>
+            <input type="text" id="product-name" placeholder="e.g., Sony WH-1000XM5">
+            <small>Leave empty to auto-detect from the product page</small>
+          </div>
+          <div class="form-group">
+            <label for="check-interval">Check Interval</label>
+            <select id="check-interval">
+              <option value="6">Every 6 hours</option>
+              <option value="12">Every 12 hours</option>
+              <option value="24" selected>Every 24 hours</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost" onclick="closeModal('modal-add-product')">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btn-submit-product">
+              <span class="btn-text">Add Product</span>
+              <span class="btn-loading" style="display:none">
+                <span class="spinner"></span> Scraping price...
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Alert Settings Modal -->
+    <div id="modal-alert" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Alert Settings</h3>
+          <button class="modal-close" onclick="closeModal('modal-alert')">&times;</button>
+        </div>
+        <form id="form-alert">
+          <input type="hidden" id="alert-product-id">
+          <div class="form-group">
+            <label for="alert-type">Alert Type</label>
+            <select id="alert-type">
+              <option value="price_change_any">Any price change</option>
+              <option value="price_drop_percent">Price drops by X%</option>
+              <option value="price_below">Price falls below amount</option>
+            </select>
+          </div>
+          <div class="form-group" id="group-threshold-percent" style="display:none">
+            <label for="alert-threshold-percent">Drop percentage (%)</label>
+            <input type="number" id="alert-threshold-percent" min="1" max="99" value="10">
+          </div>
+          <div class="form-group" id="group-threshold-price" style="display:none">
+            <label for="alert-threshold-price">Price threshold (&euro;)</label>
+            <input type="number" id="alert-threshold-price" min="0.01" step="0.01">
+          </div>
+          <div class="form-group">
+            <label for="alert-method">Notification Method</label>
+            <select id="alert-method">
+              <option value="email">Email</option>
+              <option value="telegram" disabled>Telegram (coming soon)</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost" onclick="closeModal('modal-alert')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Alert</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/alerts.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
