@@ -1,0 +1,14 @@
+node_modules
+dist
+data
+.git
+.github
+.claude
+.env
+tests
+*.md
+*.db
+*.sqlite
+playwright-report
+test-results
+vitest.config.ts
