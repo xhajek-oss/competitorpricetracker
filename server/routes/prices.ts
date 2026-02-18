@@ -10,7 +10,7 @@ const router = Router();
 // GET /api/products/:id/prices — Get price history
 router.get('/products/:id/prices', (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.id as string, 10);
     if (isNaN(id)) {
       const response: ApiResponse<never> = { success: false, error: 'Invalid product ID' };
       res.status(400).json(response);
@@ -40,7 +40,7 @@ router.get('/products/:id/prices', (req: Request, res: Response) => {
 // POST /api/products/:id/check — Trigger immediate price check
 router.post('/products/:id/check', async (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.id as string, 10);
     if (isNaN(id)) {
       const response: ApiResponse<never> = { success: false, error: 'Invalid product ID' };
       res.status(400).json(response);

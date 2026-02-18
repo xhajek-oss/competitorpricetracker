@@ -55,7 +55,7 @@ router.post('/', (req: Request, res: Response) => {
 // PUT /:id — Update an alert
 router.put('/:id', (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.id as string, 10);
     if (isNaN(id)) {
       const response: ApiResponse<never> = { success: false, error: 'Invalid alert ID' };
       res.status(400).json(response);
@@ -89,7 +89,7 @@ router.put('/:id', (req: Request, res: Response) => {
 // DELETE /:id — Delete an alert
 router.delete('/:id', (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.id as string, 10);
     if (isNaN(id)) {
       const response: ApiResponse<never> = { success: false, error: 'Invalid alert ID' };
       res.status(400).json(response);

@@ -91,7 +91,7 @@ router.post('/', async (req: Request, res: Response) => {
 // GET /:id — Get a single product
 router.get('/:id', (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.id as string, 10);
     if (isNaN(id)) {
       const response: ApiResponse<never> = { success: false, error: 'Invalid product ID' };
       res.status(400).json(response);
@@ -117,7 +117,7 @@ router.get('/:id', (req: Request, res: Response) => {
 // PUT /:id — Update a product
 router.put('/:id', (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.id as string, 10);
     if (isNaN(id)) {
       const response: ApiResponse<never> = { success: false, error: 'Invalid product ID' };
       res.status(400).json(response);
@@ -149,7 +149,7 @@ router.put('/:id', (req: Request, res: Response) => {
 // DELETE /:id — Delete a product
 router.delete('/:id', (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.id as string, 10);
     if (isNaN(id)) {
       const response: ApiResponse<never> = { success: false, error: 'Invalid product ID' };
       res.status(400).json(response);
