@@ -140,7 +140,28 @@
     </div>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Login Modal -->
+  <div id="modal-login" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>API Authentication</h3>
+      </div>
+      <form id="form-login">
+        <div class="form-group">
+          <label for="login-api-key">API Key</label>
+          <input type="password" id="login-api-key" placeholder="Enter your API key" required>
+          <small>Set via API_KEY in the server .env file</small>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Authenticate</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
+          integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC"
+          crossorigin="anonymous"></script>
   <script src="js/api.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/alerts.js"></script>

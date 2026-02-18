@@ -9,12 +9,19 @@
     "start": "node dist/server/index.js",
     "scrape:test": "tsx server/scraper/test.ts"
   },
-  "keywords": ["price-tracker", "ecommerce", "scraper", "competitor-analysis"],
+  "keywords": [
+    "price-tracker",
+    "ecommerce",
+    "scraper",
+    "competitor-analysis"
+  ],
   "license": "MIT",
   "dependencies": {
     "better-sqlite3": "^11.7.0",
     "cors": "^2.8.5",
     "express": "^4.21.0",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
     "node-cron": "^3.0.3",
     "playwright": "^1.49.0",
     "resend": "^4.0.0"

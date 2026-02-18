@@ -14,11 +14,22 @@ try {
   console.log('Notification module not available yet -- alerts will be logged to console');
 }
 
+let isRunning = false;
+
 export function startScheduler(): void {
   // Run every hour at minute 0
   cron.schedule('0 * * * *', async () => {
-    console.log(`[${new Date().toISOString()}] Running scheduled price check...`);
-    await checkDueProducts();
+    if (isRunning) {
+      console.log(`[${new Date().toISOString()}] Previous check still running, skipping this cycle`);
+      return;
+    }
+    isRunning = true;
+    try {
+      console.log(`[${new Date().toISOString()}] Running scheduled price check...`);
+      await checkDueProducts();
+    } finally {
+      isRunning = false;
+    }
   });
 
   console.log('Scheduler started -- checking prices every hour');

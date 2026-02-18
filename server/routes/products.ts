@@ -2,8 +2,11 @@ import { Router, Request, Response } from 'express';
 import { getAllProducts, getProductById, createProduct, updateProduct, deleteProduct } from '../database/models/product';
 import { addPriceRecord } from '../database/models/priceHistory';
 import { createAlert } from '../database/models/alert';
-import { scrapePrice, detectShopType } from '../scraper';
+import { scrapePrice, detectShopType, validateUrlSafety } from '../scraper';
+import { CONFIG } from '../../shared/config';
 import type { ApiResponse, Product, CreateProductRequest, UpdateProductRequest } from '../../shared/types';
+
+const ALLOWED_INTERVALS = [6, 12, 24];
 
 const router = Router();
 
@@ -14,9 +17,8 @@ router.get('/', (_req: Request, res: Response) => {
     const response: ApiResponse<Product[]> = { success: true, data: products };
     res.json(response);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch products';
-    const response: ApiResponse<never> = { success: false, error: message };
-    res.status(500).json(response);
+    console.error('Failed to fetch products:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch products' });
   }
 });
 
@@ -27,8 +29,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Validate URL
     if (!body.url || typeof body.url !== 'string') {
-      const response: ApiResponse<never> = { success: false, error: 'URL is required' };
-      res.status(400).json(response);
+      res.status(400).json({ success: false, error: 'URL is required' });
       return;
     }
 
@@ -36,14 +37,32 @@ router.post('/', async (req: Request, res: Response) => {
     try {
       parsedUrl = new URL(body.url);
     } catch {
-      const response: ApiResponse<never> = { success: false, error: 'Invalid URL format' };
-      res.status(400).json(response);
+      res.status(400).json({ success: false, error: 'Invalid URL format' });
       return;
     }
 
     if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-      const response: ApiResponse<never> = { success: false, error: 'URL must use http or https protocol' };
-      res.status(400).json(response);
+      res.status(400).json({ success: false, error: 'URL must use http or https' });
+      return;
+    }
+
+    // SSRF protection
+    const safety = await validateUrlSafety(body.url);
+    if (!safety.safe) {
+      res.status(400).json({ success: false, error: 'This URL cannot be tracked for security reasons' });
+      return;
+    }
+
+    // Validate check_interval
+    if (body.check_interval !== undefined && !ALLOWED_INTERVALS.includes(body.check_interval)) {
+      res.status(400).json({ success: false, error: 'check_interval must be 6, 12, or 24' });
+      return;
+    }
+
+    // Enforce max products limit
+    const existing = getAllProducts();
+    if (existing.length >= CONFIG.MAX_PRODUCTS) {
+      res.status(400).json({ success: false, error: `Maximum of ${CONFIG.MAX_PRODUCTS} products reached` });
       return;
     }
 
@@ -82,9 +101,8 @@ router.post('/', async (req: Request, res: Response) => {
     const response: ApiResponse<Product> = { success: true, data: updatedProduct };
     res.status(201).json(response);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to create product';
-    const response: ApiResponse<never> = { success: false, error: message };
-    res.status(500).json(response);
+    console.error('Failed to create product:', error);
+    res.status(500).json({ success: false, error: 'Failed to create product' });
   }
 });
 
@@ -93,24 +111,21 @@ router.get('/:id', (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id as string, 10);
     if (isNaN(id)) {
-      const response: ApiResponse<never> = { success: false, error: 'Invalid product ID' };
-      res.status(400).json(response);
+      res.status(400).json({ success: false, error: 'Invalid product ID' });
       return;
     }
 
     const product = getProductById(id);
     if (!product) {
-      const response: ApiResponse<never> = { success: false, error: 'Product not found' };
-      res.status(404).json(response);
+      res.status(404).json({ success: false, error: 'Product not found' });
       return;
     }
 
     const response: ApiResponse<Product> = { success: true, data: product };
     res.json(response);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch product';
-    const response: ApiResponse<never> = { success: false, error: message };
-    res.status(500).json(response);
+    console.error('Failed to fetch product:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch product' });
   }
 });
 
@@ -119,12 +134,18 @@ router.put('/:id', (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id as string, 10);
     if (isNaN(id)) {
-      const response: ApiResponse<never> = { success: false, error: 'Invalid product ID' };
-      res.status(400).json(response);
+      res.status(400).json({ success: false, error: 'Invalid product ID' });
       return;
     }
 
     const body = req.body as UpdateProductRequest;
+
+    // Validate check_interval if provided
+    if (body.check_interval !== undefined && !ALLOWED_INTERVALS.includes(body.check_interval)) {
+      res.status(400).json({ success: false, error: 'check_interval must be 6, 12, or 24' });
+      return;
+    }
+
     const product = updateProduct(id, {
       name: body.name,
       check_interval: body.check_interval,
@@ -132,17 +153,15 @@ router.put('/:id', (req: Request, res: Response) => {
     });
 
     if (!product) {
-      const response: ApiResponse<never> = { success: false, error: 'Product not found' };
-      res.status(404).json(response);
+      res.status(404).json({ success: false, error: 'Product not found' });
       return;
     }
 
     const response: ApiResponse<Product> = { success: true, data: product };
     res.json(response);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to update product';
-    const response: ApiResponse<never> = { success: false, error: message };
-    res.status(500).json(response);
+    console.error('Failed to update product:', error);
+    res.status(500).json({ success: false, error: 'Failed to update product' });
   }
 });
 
@@ -151,24 +170,20 @@ router.delete('/:id', (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id as string, 10);
     if (isNaN(id)) {
-      const response: ApiResponse<never> = { success: false, error: 'Invalid product ID' };
-      res.status(400).json(response);
+      res.status(400).json({ success: false, error: 'Invalid product ID' });
       return;
     }
 
     const deleted = deleteProduct(id);
     if (!deleted) {
-      const response: ApiResponse<never> = { success: false, error: 'Product not found' };
-      res.status(404).json(response);
+      res.status(404).json({ success: false, error: 'Product not found' });
       return;
     }
 
-    const response: ApiResponse<{ deleted: true }> = { success: true, data: { deleted: true } };
-    res.json(response);
+    res.json({ success: true, data: { deleted: true } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to delete product';
-    const response: ApiResponse<never> = { success: false, error: message };
-    res.status(500).json(response);
+    console.error('Failed to delete product:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete product' });
   }
 });
 

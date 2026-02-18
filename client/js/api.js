@@ -1,20 +1,47 @@
 // API Client — talks to the backend REST API
 const API_BASE = '/api';
 
+function getApiKey() {
+  return localStorage.getItem('cpt_api_key') || '';
+}
+
+function setApiKey(key) {
+  localStorage.setItem('cpt_api_key', key);
+}
+
+function clearApiKey() {
+  localStorage.removeItem('cpt_api_key');
+}
+
 async function apiRequest(method, path, body = null) {
-  const options = {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-  };
+  const headers = { 'Content-Type': 'application/json' };
+  const apiKey = getApiKey();
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey;
+  }
+
+  const options = { method, headers };
   if (body) options.body = JSON.stringify(body);
 
   const response = await fetch(`${API_BASE}${path}`, options);
+
+  if (response.status === 401) {
+    clearApiKey();
+    showLoginModal();
+    throw new Error('Authentication required');
+  }
+
   const data = await response.json();
 
   if (!data.success) {
     throw new Error(data.error || 'An error occurred');
   }
   return data.data;
+}
+
+function showLoginModal() {
+  var modal = document.getElementById('modal-login');
+  if (modal) modal.classList.add('active');
 }
 
 // Products

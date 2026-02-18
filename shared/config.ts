@@ -32,7 +32,12 @@ export const CONFIG = {
   DEFAULT_CURRENCY: 'EUR',
   DEFAULT_NOTIFICATION_METHOD: 'email' as const,
 
+  // Security
+  API_KEY: process.env.API_KEY || '',
+  ALLOWED_ORIGIN: process.env.ALLOWED_ORIGIN || '',
+
   // Rate Limiting
   MIN_CHECK_INTERVAL_MINUTES: 60,
   MAX_PRODUCTS: 100,
+  MAX_CONCURRENT_SCRAPES: 3,
 } as const;

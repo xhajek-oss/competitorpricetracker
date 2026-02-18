@@ -5,12 +5,27 @@ var refreshInterval = null;
 /**
  * Initialize the app on page load
  */
-function init() {
+async function init() {
+  // Set up event listeners (including login form)
+  setupEventListeners();
+
+  // Check if API requires authentication
+  try {
+    var headers = {};
+    if (getApiKey()) headers['X-API-Key'] = getApiKey();
+    var response = await fetch('/api/auth/check', { headers: headers });
+    var result = await response.json();
+    var authData = result.data || {};
+    if (authData.auth_required && !authData.authenticated) {
+      showLoginModal();
+      return;
+    }
+  } catch (_) {
+    // Auth check failed — proceed anyway (server may not require auth)
+  }
+
   // Load initial product list
   renderProducts();
-
-  // Set up event listeners
-  setupEventListeners();
 
   // Auto-refresh every 60 seconds
   refreshInterval = setInterval(function () {
@@ -19,6 +34,21 @@ function init() {
       renderProducts();
     }
   }, 60000);
+}
+
+/**
+ * Start the app after successful auth
+ */
+function startApp() {
+  renderProducts();
+  if (!refreshInterval) {
+    refreshInterval = setInterval(function () {
+      var productsView = document.getElementById('view-products');
+      if (productsView.classList.contains('active')) {
+        renderProducts();
+      }
+    }, 60000);
+  }
 }
 
 /**
@@ -64,8 +94,38 @@ function setupEventListeners() {
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
       document.querySelectorAll('.modal.active').forEach(function (modal) {
+        // Don't allow closing login modal with Escape
+        if (modal.id === 'modal-login') return;
         closeModal(modal.id);
       });
+    }
+  });
+
+  // Login form submission
+  document.getElementById('form-login').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var key = document.getElementById('login-api-key').value.trim();
+    if (!key) return;
+
+    setApiKey(key);
+
+    try {
+      var response = await fetch('/api/auth/check', {
+        headers: { 'X-API-Key': key },
+      });
+      var result = await response.json();
+      var authData = result.data || {};
+      if (authData.authenticated) {
+        closeModal('modal-login');
+        showToast('Authenticated successfully', 'success');
+        startApp();
+      } else {
+        clearApiKey();
+        showToast('Invalid API key', 'error');
+      }
+    } catch (_) {
+      clearApiKey();
+      showToast('Authentication failed', 'error');
     }
   });
 }
@@ -233,7 +293,7 @@ function formatShopBadge(shopType) {
   var label = shopType
     ? shopType.charAt(0).toUpperCase() + shopType.slice(1)
     : 'Generic';
-  return '<span class="shop-badge ' + badgeClass + '">' + label + '</span>';
+  return '<span class="shop-badge ' + badgeClass + '">' + escapeHtml(label) + '</span>';
 }
 
 /**
