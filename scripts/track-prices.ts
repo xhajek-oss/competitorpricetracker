@@ -61,6 +61,7 @@ async function sendTelegram(message: string): Promise<void> {
     body: JSON.stringify({
       chat_id: chatId,
       text: message,
+      parse_mode: 'HTML',
       disable_web_page_preview: false,
     }),
   });
@@ -70,8 +71,12 @@ async function sendTelegram(message: string): Promise<void> {
   }
 }
 
-function formatPrice(value: number): string {
-  return value.toFixed(2);
+function formatCzk(value: number): string {
+  return `${Math.round(value).toLocaleString('cs-CZ')} Kč`;
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 async function main(): Promise<void> {
@@ -120,7 +125,7 @@ async function main(): Promise<void> {
         lastCheckedAt: now,
       };
       stateChanged = true;
-      console.log(`Reference price saved: €${formatPrice(currentPrice)}`);
+      console.log(`Reference price saved: €${currentPrice.toFixed(2)}`);
       continue;
     }
 
@@ -134,20 +139,29 @@ async function main(): Promise<void> {
     }
 
     if (shouldAlert) {
-      const czkLine = eurCzk ? `\n≈ ${Math.round(currentPrice * eurCzk).toLocaleString('cs-CZ')} Kč` : '';
-      await sendTelegram([
-        '🔥 AMAZON.DE PRICE DROP',
-        '',
-        product.name,
-        '',
-        `Referenční cena: €${formatPrice(existing.referencePriceEur)}`,
-        `Aktuální cena: €${formatPrice(currentPrice)}${czkLine}`,
-        `Pokles: -${dropPercent.toFixed(1)} %`,
-        '',
-        product.url,
-      ].join('\n'));
-      existing.lastAlertLevel = alertLevel;
-      console.log(`Telegram alert sent at -${dropPercent.toFixed(1)}%.`);
+      if (!eurCzk) {
+        console.warn(`CZK rate unavailable; postponing alert for ${product.name}.`);
+      } else {
+        const referenceCzk = existing.referencePriceEur * eurCzk;
+        const currentCzk = currentPrice * eurCzk;
+        const savingCzk = referenceCzk - currentCzk;
+
+        await sendTelegram([
+          '🔥 <b>AMAZON PRICE DROP</b>',
+          '',
+          `<b>${escapeHtml(product.name)}</b>`,
+          '',
+          `<s>${formatCzk(referenceCzk)}</s> → <b>${formatCzk(currentCzk)}</b>`,
+          '',
+          `📉 <b>-${dropPercent.toFixed(1).replace('.', ',')} %</b>`,
+          `💰 Ušetříš <b>${formatCzk(savingCzk)}</b>`,
+          '',
+          `<a href="${escapeHtml(product.url)}">🔗 Zobrazit na Amazon.de</a>`,
+        ].join('\n'));
+
+        existing.lastAlertLevel = alertLevel;
+        console.log(`Telegram alert sent at -${dropPercent.toFixed(1)}%.`);
+      }
     }
 
     existing.lastPriceEur = currentPrice;
@@ -155,7 +169,7 @@ async function main(): Promise<void> {
     existing.lastCheckedAt = now;
     stateChanged = true;
 
-    console.log(`€${formatPrice(currentPrice)} | drop ${dropPercent.toFixed(1)}%`);
+    console.log(`€${currentPrice.toFixed(2)} | drop ${dropPercent.toFixed(1)}%`);
   }
 
   if (stateChanged) {
