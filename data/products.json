@@ -1,0 +1,8 @@
+[
+  {
+    "name": "Example Amazon.de product",
+    "url": "https://www.amazon.de/dp/B0DFSYVGJR",
+    "drop_percent": 20,
+    "enabled": false
+  }
+]
