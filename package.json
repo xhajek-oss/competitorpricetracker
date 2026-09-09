@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/server/index.js",
     "scrape:test": "tsx server/scraper/test.ts",
+    "track": "tsx scripts/track-prices.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
