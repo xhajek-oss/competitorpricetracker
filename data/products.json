@@ -1,8 +1,44 @@
 [
   {
-    "name": "Example Amazon.de product",
-    "url": "https://www.amazon.de/dp/B0DFSYVGJR",
+    "name": "Amazon product 1",
+    "url": "https://amzn.eu/d/0gl5Abom",
     "drop_percent": 20,
-    "enabled": false
+    "enabled": true
+  },
+  {
+    "name": "Amazon product 2",
+    "url": "https://amzn.eu/d/04ltj9fs",
+    "drop_percent": 20,
+    "enabled": true
+  },
+  {
+    "name": "Amazon product 3",
+    "url": "https://amzn.eu/d/00yRA2TI",
+    "drop_percent": 20,
+    "enabled": true
+  },
+  {
+    "name": "Amazon product 4",
+    "url": "https://amzn.eu/d/06bEPc4J",
+    "drop_percent": 20,
+    "enabled": true
+  },
+  {
+    "name": "Amazon product 5",
+    "url": "https://amzn.eu/d/0huBBY44",
+    "drop_percent": 20,
+    "enabled": true
+  },
+  {
+    "name": "Amazon product 6",
+    "url": "https://amzn.eu/d/0iO1CrGo",
+    "drop_percent": 20,
+    "enabled": true
+  },
+  {
+    "name": "Amazon product 7",
+    "url": "https://amzn.eu/d/06qiKLeo",
+    "drop_percent": 20,
+    "enabled": true
   }
 ]
